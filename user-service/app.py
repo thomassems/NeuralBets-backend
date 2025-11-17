@@ -1,10 +1,12 @@
 from flask import Flask, jsonify
 from flask.cli import load_dotenv
+from routes.api_routes import api_bp
 
 load_dotenv()
 
-
 app = Flask(__name__)
+
+app.register_blueprint(api_bp)
 
 @app.route('/', methods=['GET'])
 def home():
@@ -19,7 +21,3 @@ def home():
 def health_check():
     """Endpoint for container health checks."""
     return jsonify({"status": "ok"}), 200
-
-if __name__ == '__main__':
-    # Default local run configuration
-    app.run(host='0.0.0.0', port=5001, debug=True)
