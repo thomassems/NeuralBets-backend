@@ -1,0 +1,22 @@
+{
+  "name": "neuralbets",
+  "version": "1.0.0",
+  "description": "A minimal, containerized Flask backend.",
+  "main": "app.py",
+  "scripts": {
+    "start:local": "flask run --host=0.0.0.0 --port=5001",
+    "install:py": "pip install -r requirements.txt",
+    "docker:build": "docker build -t flask-app-image .",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "start": "npm run docker:up"
+  },
+  "keywords": [
+    "flask",
+    "docker",
+    "python",
+    "npm"
+  ],
+  "author": "",
+  "license": "ISC"
+}

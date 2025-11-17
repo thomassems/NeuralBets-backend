@@ -1,0 +1,11 @@
+# Map container port 5000 to the host port 8080.
+# Access the app from your browser at http://localhost:8080
+ports:
+  - "8080:5001"
+  
+# Always restart the container if it fails
+restart: always
+
+# Environment variables for the container
+environment:
+  FLASK_ENV: production
