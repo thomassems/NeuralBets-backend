@@ -8,3 +8,12 @@ services:
     restart: always
     environment:
       FLASK_ENV: production
+
+  bet-service:
+    build:
+      context: ./bet-service
+    ports:
+      - "8082:5001"
+    restart: always
+    environment:
+      FLASK_ENV: production
