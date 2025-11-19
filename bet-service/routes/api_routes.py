@@ -22,7 +22,7 @@ def list_bets():
 
 @api_bp.route('/getodds', methods=['GET'])
 def get_odds():
-    """Call external api to retrieve odds"""
+    """Placeholder call to external api to retrieve odds"""
     key = current_app.config.get('EXTERNAL_API_KEY')
     if not key:
         return jsonify({"error": "missing api key"}), 500
