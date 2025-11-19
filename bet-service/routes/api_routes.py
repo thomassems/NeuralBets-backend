@@ -1,4 +1,5 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, current_app
+import requests
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/bets')
 
@@ -18,3 +19,25 @@ def list_bets():
     return jsonify([
         {"id": 1, "props": ["fight_1", "over_2.5"], "amount": 100, "odds": 1.5},
     ]), 200
+
+@api_bp.route('/getodds', methods=['GET'])
+def get_odds():
+    """Call external api to retrieve odds"""
+    key = current_app.config.get('EXTERNAL_API_KEY')
+    if not key:
+        return jsonify({"error": "missing api key"}), 500
+    
+    url = "https://api.the-odds-api.com/v4/sports/"
+    params = {
+        "apiKey": key
+    }
+    resp = requests.get(url, params=params, timeout=5)
+    try:
+        resp.raise_for_status()
+    except requests.HTTPError:
+        return jsonify({"error": "external API error", "details": resp.text}), resp.status_code
+    
+    return jsonify(resp.json()), 200
+
+
+    
