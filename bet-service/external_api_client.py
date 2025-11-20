@@ -20,3 +20,24 @@ def fetch_sports_data():
         return jsonify({"error": "external API error", "details": resp.text}), resp.status_code
     print("success - sending sports data")
     return resp.json()
+
+# can't just store this in a single no-sql db
+def fetch_odds_data(sport, regions='us', markets='h2h'):
+    """Return all odds data"""
+    key = current_app.config.get('EXTERNAL_API_KEY')
+    if not key:
+        return jsonify({"error": "missing api key"}), 500
+    
+    url = f"https://api.the-odds-api.com/v4/sports/{sport}/odds/"
+    params = {
+        "apiKey": key,
+        "regions": regions,
+        "markets": markets
+    }
+    resp = requests.get(url, params=params, timeout=7)
+    try:
+        resp.raise_for_status
+    except requests.HTTPError:
+        return jsonify({"error": "external API error", "details": resp.text}), resp.status_code
+    print("success - sending sports data")
+    return resp.json()
