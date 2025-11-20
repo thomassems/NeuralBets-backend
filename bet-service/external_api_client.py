@@ -2,7 +2,6 @@ import requests
 import os
 from flask import current_app, jsonify
 
-
 def fetch_sports_data():
     """Call external api to retrieve odds"""
     key = current_app.config.get('EXTERNAL_API_KEY')
@@ -39,5 +38,6 @@ def fetch_odds_data(sport, regions='us', markets='h2h'):
         resp.raise_for_status
     except requests.HTTPError:
         return jsonify({"error": "external API error", "details": resp.text}), resp.status_code
-    print("success - sending sports data")
+    print("success - sending odds data")
+    # WILL NEED TO DETERMINE IF NEED TO UPDATE ANY DB
     return resp.json()
