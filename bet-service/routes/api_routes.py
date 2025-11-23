@@ -41,18 +41,16 @@ def get_odds(sport, regions, markets):
         return jsonify({"error": "Failed to get odds data"}), 500
 
 @api_bp.route('/getdefaultodds', methods=['GET'])
-def get_def_odds():
-    # WILL FIRST NEED TO CHECK DB/CACHE, won't want to refresh too often
+def get_live_odds():
     repo = BetRepository()
-    res = repo.get_default_odds()
+    res = repo.get_live_odds()
     print('here are the odds')
-    print(res)
     if res:
-        return jsonify([res]), 200
+        return jsonify(res), 200
     try:
-        #  will need to determine what to search for by default
-        print('fetching default odds')
-        data = fetch_odds_data()
+        print('odds outdated, fetching new live odds')
+        data = fetch_odds_data(sport='upcoming')
+        repo.update_live_odds(data)
         return jsonify([data]), 200
     except:
         return jsonify({"error": "Failed to get odds data"}), 500
