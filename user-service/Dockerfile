@@ -8,12 +8,15 @@ ENV PYTHONUNBUFFERED 1
 # Set the working directory inside the container
 WORKDIR /app
 
+# Copy shared_utils first (needed for editable install)
+COPY shared_utils /app/shared_utils
+
 # Copy the requirements file and install dependencies first for layer caching
-COPY requirements.txt /app/
+COPY user-service/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code
-COPY . /app/
+COPY user-service /app/
 
 # Expose the internal port of the application
 EXPOSE 5001

@@ -1,8 +1,8 @@
-version: '1.0'
 services:
   user-service:
     build:
-      context: ./user-service
+      context: .
+      dockerfile: ./user-service/Dockerfile
     ports:
       - "8081:5000"
     restart: always
@@ -11,7 +11,8 @@ services:
 
   bet-service:
     build:
-      context: ./bet-service
+      context: .
+      dockerfile: ./bet-service/Dockerfile
     ports:
       - "8082:5001"
     restart: always
