@@ -41,3 +41,21 @@ def fetch_odds_data(sport, regions='us', markets='h2h'):
     print("success - sending odds data")
     # WILL NEED TO DETERMINE IF NEED TO UPDATE ANY DB
     return resp.json()
+
+def fetch_events_data(sport):
+    """Return all events data"""
+    key = current_app.config.get('EXTERNAL_API_KEY')
+    if not key:
+        return jsonify({"error": "missing api key"}), 500
+    
+    url = f"https://api.the-odds-api.com/v4/sports/{sport}/events"
+    params = {
+        "apiKey": key
+    }
+    resp = requests.get(url, params=params, timeout=7)
+    try:
+        resp.raise_for_status()
+    except requests.HTTPError:
+        return jsonify({"error": "external API error", "details": resp.text}), resp.status_code
+    print("success - sending events data")
+    return resp.json()
