@@ -262,16 +262,4 @@ Services are configured via environment variables:
 
 - `ODDS_API_KEY`: API key for The Odds API
 - `MONGODB_URI`: MongoDB connection string
-- `FLASK_ENV`: Environment (development/production)
-
-## 📝 License
-
-This project is part of a portfolio demonstration.
-
-## 👤 Author
-
-Built as a demonstration of microservices architecture, modern Python development, and production-ready backend systems.
-
----
-
-**Note**: This is a portfolio project demonstrating backend architecture, microservices design, and production deployment practices.
+- `FLASK_ENV`: Environment (development/production
