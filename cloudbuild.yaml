@@ -1,0 +1,150 @@
+# Google Cloud Build configuration for NeuralBets Backend
+# Builds and deploys microservices to GCP
+
+steps:
+  # ========================================================================
+  # Build User Service
+  # ========================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-user-service'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/user-service:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/user-service:latest'
+      - '-f'
+      - 'user-service/Dockerfile'
+      - '.'
+    waitFor: ['-']
+
+  # ========================================================================
+  # Build Bet Service
+  # ========================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-bet-service'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/bet-service:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/bet-service:latest'
+      - '-f'
+      - 'bet-service/Dockerfile'
+      - '.'
+    waitFor: ['-']
+
+  # ========================================================================
+  # Push User Service to Artifact Registry
+  # ========================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-user-service'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/user-service'
+    waitFor: ['build-user-service']
+
+  # ========================================================================
+  # Push Bet Service to Artifact Registry
+  # ========================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-bet-service'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/bet-service'
+    waitFor: ['build-bet-service']
+
+  # ========================================================================
+  # Deploy User Service to Cloud Run (Optional)
+  # ========================================================================
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-user-service'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'user-service'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/user-service:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '5000'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--set-env-vars'
+      - 'FLASK_ENV=production'
+    waitFor: ['push-user-service']
+
+  # ========================================================================
+  # Deploy Bet Service to Cloud Run (Optional)
+  # ========================================================================
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-bet-service'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'bet-service'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/bet-service:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '5001'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--set-env-vars'
+      - 'FLASK_ENV=production'
+      - '--set-secrets'
+      - 'ODDS_API_KEY=odds-api-key:latest'
+      - 'MONGODB_URI=mongodb-uri:latest'
+    waitFor: ['push-bet-service']
+
+# Substitution variables (set these in Cloud Build triggers or via gcloud)
+substitutions:
+  _REGION: 'us-central1'  # Change to your preferred region
+  _REPOSITORY: 'neuralbets'  # Your Artifact Registry repository name
+
+# Build options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# Timeout for the entire build
+timeout: '1200s'
+
+# Images to be pushed to the registry
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/user-service:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/user-service:latest'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/bet-service:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/bet-service:latest'
+
+# Tags for the build
+tags:
+  - 'neuralbets'
+  - 'microservices'
+  - 'flask'
+  - 'production'
+
