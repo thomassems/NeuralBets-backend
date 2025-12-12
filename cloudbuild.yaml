@@ -7,6 +7,7 @@ steps:
   # ========================================================================
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-user-service'
+    dir: '.'  # Explicitly set working directory
     args:
       - 'build'
       - '-t'
@@ -14,7 +15,7 @@ steps:
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/user-service:latest'
       - '-f'
-      - 'user-service/Dockerfile'
+      - './user-service/Dockerfile'
       - '.'
     waitFor: ['-']
 
@@ -23,6 +24,7 @@ steps:
   # ========================================================================
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-bet-service'
+    dir: '.'  # Explicitly set working directory
     args:
       - 'build'
       - '-t'
@@ -30,7 +32,7 @@ steps:
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/bet-service:latest'
       - '-f'
-      - 'bet-service/Dockerfile'
+      - './bet-service/Dockerfile'
       - '.'
     waitFor: ['-']
 
