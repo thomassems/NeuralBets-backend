@@ -35,15 +35,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy user-service application code
 COPY user-service /app/
 
-# Expose port
-EXPOSE 5000
+# Set default port (Cloud Run will override with PORT env var)
+ENV PORT=5000
 
-# Health check
+# Expose port (Cloud Run uses PORT env var)
+EXPOSE $PORT
+
+# Health check (uses PORT env var)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
+    CMD sh -c "python -c \"import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '5000') + '/health')\"" || exit 1
 
-# Run with Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "app:app"]
+# Run with Gunicorn (uses PORT env var for Cloud Run compatibility)
+CMD sh -c "gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120 app:app"
 
 # ============================================================================
 # Bet Service
@@ -57,15 +60,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy bet-service application code
 COPY bet-service /app/
 
-# Expose port
-EXPOSE 5001
+# Set default port (Cloud Run will override with PORT env var)
+ENV PORT=5001
 
-# Health check
+# Expose port (Cloud Run uses PORT env var)
+EXPOSE $PORT
+
+# Health check (uses PORT env var)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')" || exit 1
+    CMD sh -c "python -c \"import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '5001') + '/health')\"" || exit 1
 
-# Run with Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "--timeout", "120", "app:app"]
+# Run with Gunicorn (uses PORT env var for Cloud Run compatibility)
+CMD sh -c "gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 2 --timeout 120 app:app"
 
 # ============================================================================
 # Default target (builds bet-service if no target specified)

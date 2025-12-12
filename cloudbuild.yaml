@@ -3,36 +3,38 @@
 
 steps:
   # ========================================================================
-  # Build User Service
+  # Build User Service (using root Dockerfile with target)
   # ========================================================================
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-user-service'
-    dir: '.'  # Explicitly set working directory
     args:
       - 'build'
+      - '--target'
+      - 'user-service'
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/user-service:${SHORT_SHA}'
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/user-service:latest'
       - '-f'
-      - './user-service/Dockerfile'
+      - 'Dockerfile'
       - '.'
     waitFor: ['-']
 
   # ========================================================================
-  # Build Bet Service
+  # Build Bet Service (using root Dockerfile with target)
   # ========================================================================
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-bet-service'
-    dir: '.'  # Explicitly set working directory
     args:
       - 'build'
+      - '--target'
+      - 'bet-service'
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/bet-service:${SHORT_SHA}'
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/bet-service:latest'
       - '-f'
-      - './bet-service/Dockerfile'
+      - 'Dockerfile'
       - '.'
     waitFor: ['-']
 
@@ -76,7 +78,7 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--port'
-      - '5000'
+      - '8080'
       - '--memory'
       - '512Mi'
       - '--cpu'
@@ -86,7 +88,9 @@ steps:
       - '--max-instances'
       - '10'
       - '--set-env-vars'
-      - 'FLASK_ENV=production'
+      - 'FLASK_ENV=production,PORT=8080'
+      - '--timeout'
+      - '300'
     waitFor: ['push-user-service']
 
   # ========================================================================
@@ -107,7 +111,7 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--port'
-      - '5001'
+      - '8080'
       - '--memory'
       - '512Mi'
       - '--cpu'
@@ -117,10 +121,12 @@ steps:
       - '--max-instances'
       - '10'
       - '--set-env-vars'
-      - 'FLASK_ENV=production'
+      - 'FLASK_ENV=production,PORT=8080'
       - '--set-secrets'
       - 'ODDS_API_KEY=odds-api-key:latest'
       - 'MONGODB_URI=mongodb-uri:latest'
+      - '--timeout'
+      - '300'
     waitFor: ['push-bet-service']
 
 # Substitution variables (set these in Cloud Build triggers or via gcloud)
