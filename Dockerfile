@@ -35,9 +35,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy user-service application code
 COPY user-service /app/
 
-# Copy and make entrypoint script executable
+# Ensure entrypoint script exists and is executable
 COPY user-service/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && \
+    ls -la /app/entrypoint.sh && \
+    head -n 1 /app/entrypoint.sh
 
 # Set default port (Cloud Run will override with PORT env var)
 ENV PORT=5000
@@ -50,8 +52,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD sh -c "python -c \"import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '5000') + '/health')\"" || exit 1
 
 # Run with Gunicorn (uses PORT env var for Cloud Run compatibility)
-# Use sh to execute the entrypoint script explicitly
-CMD ["/bin/sh", "/app/entrypoint.sh"]
+# Read PORT from environment and start gunicorn directly
+CMD sh -c "PORT=\${PORT:-5000} && echo \"Starting server on port \$PORT\" && exec gunicorn --bind 0.0.0.0:\$PORT --workers 2 --timeout 120 --access-logfile - --error-logfile - app:app"
 
 # ============================================================================
 # Bet Service
@@ -62,12 +64,14 @@ FROM base as bet-service
 COPY bet-service/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy bet-service application code
+# Copy bet-service application code (excluding entrypoint.sh to avoid conflicts)
 COPY bet-service /app/
 
-# Copy and make entrypoint script executable
+# Ensure entrypoint script exists and is executable
 COPY bet-service/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && \
+    ls -la /app/entrypoint.sh && \
+    head -n 1 /app/entrypoint.sh
 
 # Set default port (Cloud Run will override with PORT env var)
 ENV PORT=5001
@@ -80,8 +84,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD sh -c "python -c \"import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '5001') + '/health')\"" || exit 1
 
 # Run with Gunicorn (uses PORT env var for Cloud Run compatibility)
-# Use sh to execute the entrypoint script explicitly
-CMD ["/bin/sh", "/app/entrypoint.sh"]
+# Read PORT from environment and start gunicorn directly
+# For bet-service, default port is 5001
+CMD sh -c "PORT=\${PORT:-5001} && echo \"Starting NeuralBets Backend on port \$PORT\" && exec gunicorn --bind 0.0.0.0:\$PORT --workers 2 --timeout 120 --access-logfile - --error-logfile - app:app"
 
 # ============================================================================
 # Default target (builds bet-service if no target specified)
