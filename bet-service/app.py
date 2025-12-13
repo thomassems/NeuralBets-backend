@@ -30,6 +30,7 @@ except Exception as e:
     # Continue anyway - app can run without MongoDB
 
 # Import routes with error handling
+routes_loaded = False
 try:
     print("[app] Attempting to import routes.api_routes...")
     from routes.api_routes import api_bp
@@ -38,14 +39,20 @@ try:
     print("[app] Attempting to register blueprint...")
     app.register_blueprint(api_bp)
     print("[app] Blueprint registered successfully")
-except ImportError as e:
-    print(f"[app] CRITICAL ERROR: Import failed: {e}")
-    traceback.print_exc()
-    sys.exit(1)  # Can't run without routes
+    routes_loaded = True
 except Exception as e:
-    print(f"[app] CRITICAL ERROR: Failed to register routes: {e}")
+    print(f"[app] CRITICAL ERROR: Failed to load routes: {e}")
     traceback.print_exc()
-    sys.exit(1)  # Can't run without routes
+    # Create error route so app can at least start and show the error
+    @app.route('/error')
+    def import_error():
+        return jsonify({
+            "error": "Routes failed to load", 
+            "details": str(e),
+            "message": "Check logs for full traceback"
+        }), 500
+    # Don't raise - allow app to start so we can debug
+    print("[app] App will start with limited functionality due to route import failure")
 
 # Import and run startup tasks
 try:

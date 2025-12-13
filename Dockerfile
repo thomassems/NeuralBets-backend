@@ -35,11 +35,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy user-service application code
 COPY user-service /app/
 
-# Ensure entrypoint script exists and is executable
-COPY user-service/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh && \
-    ls -la /app/entrypoint.sh && \
-    head -n 1 /app/entrypoint.sh
+# Copy and make startup script executable (create one for user-service too)
+RUN echo '#!/bin/sh\nset -e\nPORT=${PORT:-5000}\necho "Starting User Service on port $PORT"\nexec gunicorn --bind "0.0.0.0:$PORT" --workers 2 --timeout 120 --access-logfile - --error-logfile - app:app' > /app/start.sh && \
+    chmod +x /app/start.sh
 
 # Set default port (Cloud Run will override with PORT env var)
 ENV PORT=5000
@@ -51,9 +49,8 @@ EXPOSE $PORT
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD sh -c "python -c \"import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '5000') + '/health')\"" || exit 1
 
-# Run with Gunicorn (uses PORT env var for Cloud Run compatibility)
-# Read PORT from environment and start gunicorn directly
-CMD sh -c "PORT=\${PORT:-5000} && echo \"Starting server on port \$PORT\" && exec gunicorn --bind 0.0.0.0:\$PORT --workers 2 --timeout 120 --access-logfile - --error-logfile - app:app"
+# Run with startup script
+CMD ["/app/start.sh"]
 
 # ============================================================================
 # Bet Service
@@ -64,14 +61,12 @@ FROM base as bet-service
 COPY bet-service/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy bet-service application code (excluding entrypoint.sh to avoid conflicts)
+# Copy bet-service application code
 COPY bet-service /app/
 
-# Ensure entrypoint script exists and is executable
-COPY bet-service/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh && \
-    ls -la /app/entrypoint.sh && \
-    head -n 1 /app/entrypoint.sh
+# Copy and make startup script executable
+COPY bet-service/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Set default port (Cloud Run will override with PORT env var)
 ENV PORT=5001
@@ -83,10 +78,8 @@ EXPOSE $PORT
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD sh -c "python -c \"import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '5001') + '/health')\"" || exit 1
 
-# Run with Gunicorn (uses PORT env var for Cloud Run compatibility)
-# Read PORT from environment and start gunicorn directly
-# For bet-service, default port is 5001
-CMD sh -c "PORT=\${PORT:-5001} && echo \"Starting NeuralBets Backend on port \$PORT\" && exec gunicorn --bind 0.0.0.0:\$PORT --workers 2 --timeout 120 --access-logfile - --error-logfile - app:app"
+# Run with startup script that tests app import first
+CMD ["/app/start.sh"]
 
 # ============================================================================
 # Default target (builds bet-service if no target specified)
