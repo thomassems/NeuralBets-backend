@@ -46,7 +46,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD sh -c "python -c \"import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '5000') + '/health')\"" || exit 1
 
 # Run with Gunicorn (uses PORT env var for Cloud Run compatibility)
-CMD sh -c "gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120 app:app"
+# Print PORT for debugging
+CMD sh -c "echo 'Starting server on port ${PORT:-5000}' && gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120 --access-logfile - --error-logfile - app:app"
 
 # ============================================================================
 # Bet Service
@@ -71,7 +72,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD sh -c "python -c \"import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '5001') + '/health')\"" || exit 1
 
 # Run with Gunicorn (uses PORT env var for Cloud Run compatibility)
-CMD sh -c "gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 2 --timeout 120 app:app"
+# Print PORT for debugging
+CMD sh -c "echo 'Starting server on port ${PORT:-5001}' && gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 2 --timeout 120 --access-logfile - --error-logfile - app:app"
 
 # ============================================================================
 # Default target (builds bet-service if no target specified)
