@@ -1,0 +1,59 @@
+# .gcloudignore - Files to exclude from Cloud Build context
+# This helps reduce build time and context size
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker-compose.yml
+.dockerignore
+# But keep Dockerfiles
+!**/Dockerfile
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Examples
+examples_using_schemas.py
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (if any)
+node_modules/
+package-lock.json
+

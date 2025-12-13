@@ -11,8 +11,13 @@ app = Flask(__name__)
 app.config['EXTERNAL_API_KEY'] = os.getenv('ODDS_API_KEY')
 app.register_blueprint(api_bp)
 
-with app.app_context():
+# Run startup tasks in background (non-blocking)
+# This ensures the app starts quickly for Cloud Run health checks
+try:
     run_on_startup()
+except Exception as e:
+    print(f"Warning: Startup tasks failed, but continuing: {e}")
+    # Don't fail app startup if startup tasks fail
 
 @app.route('/', methods=['GET'])
 def home():

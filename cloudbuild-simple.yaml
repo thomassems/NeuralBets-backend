@@ -1,0 +1,49 @@
+# Simplified Cloud Build config for testing
+# Use this to verify Dockerfile paths work correctly
+
+steps:
+  # Build User Service
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-user-service'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/user-service:${SHORT_SHA}'
+      - '-f'
+      - './user-service/Dockerfile'
+      - '.'
+
+  # Build Bet Service  
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-bet-service'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/bet-service:${SHORT_SHA}'
+      - '-f'
+      - './bet-service/Dockerfile'
+      - '.'
+
+  # Push User Service
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/user-service:${SHORT_SHA}'
+    waitFor: ['build-user-service']
+
+  # Push Bet Service
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/bet-service:${SHORT_SHA}'
+    waitFor: ['build-bet-service']
+
+substitutions:
+  _REGION: 'us-central1'
+  _REPOSITORY: 'neuralbets'
+
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/user-service:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/bet-service:${SHORT_SHA}'
+
+
