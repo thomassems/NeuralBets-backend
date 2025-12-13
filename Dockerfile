@@ -50,7 +50,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD sh -c "python -c \"import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '5000') + '/health')\"" || exit 1
 
 # Run with Gunicorn (uses PORT env var for Cloud Run compatibility)
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Use sh to execute the entrypoint script explicitly
+CMD ["/bin/sh", "/app/entrypoint.sh"]
 
 # ============================================================================
 # Bet Service
@@ -79,7 +80,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD sh -c "python -c \"import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '5001') + '/health')\"" || exit 1
 
 # Run with Gunicorn (uses PORT env var for Cloud Run compatibility)
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Use sh to execute the entrypoint script explicitly
+CMD ["/bin/sh", "/app/entrypoint.sh"]
 
 # ============================================================================
 # Default target (builds bet-service if no target specified)
