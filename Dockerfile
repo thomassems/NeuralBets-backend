@@ -35,6 +35,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy user-service application code
 COPY user-service /app/
 
+# Copy and make entrypoint script executable
+COPY user-service/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Set default port (Cloud Run will override with PORT env var)
 ENV PORT=5000
 
@@ -46,8 +50,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD sh -c "python -c \"import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '5000') + '/health')\"" || exit 1
 
 # Run with Gunicorn (uses PORT env var for Cloud Run compatibility)
-# Print PORT for debugging
-CMD sh -c "echo 'Starting server on port ${PORT:-5000}' && gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 2 --timeout 120 --access-logfile - --error-logfile - app:app"
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # ============================================================================
 # Bet Service
@@ -61,6 +64,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy bet-service application code
 COPY bet-service /app/
 
+# Copy and make entrypoint script executable
+COPY bet-service/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Set default port (Cloud Run will override with PORT env var)
 ENV PORT=5001
 
@@ -72,8 +79,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD sh -c "python -c \"import urllib.request, os; urllib.request.urlopen('http://localhost:' + os.environ.get('PORT', '5001') + '/health')\"" || exit 1
 
 # Run with Gunicorn (uses PORT env var for Cloud Run compatibility)
-# Print PORT for debugging
-CMD sh -c "echo 'Starting server on port ${PORT:-5001}' && gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 2 --timeout 120 --access-logfile - --error-logfile - app:app"
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # ============================================================================
 # Default target (builds bet-service if no target specified)
