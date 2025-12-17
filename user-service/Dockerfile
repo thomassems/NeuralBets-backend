@@ -18,9 +18,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY user-service /app/
 
-# Expose the internal port of the application
-EXPOSE 5001
+# Expose the internal port Cloud Run will send traffic to
+EXPOSE 8080
 
-# Command to run the application using Gunicorn (production WSGI server)
-# It binds to 0.0.0.0 on port 5000 and runs the Flask app 'app:app'
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+# Use Cloud Run provided PORT if set, default to 8080 locally
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8080} app:app"]
