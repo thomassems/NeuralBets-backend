@@ -1,4 +1,3 @@
-import os
 import sys
 import traceback
 
@@ -11,18 +10,11 @@ except Exception as e:
     print(f"[app] Warning: Could not load .env file: {e}")
 
 from flask import Flask, jsonify
-from flask_cors import CORS
+import os
 
 # Create Flask app FIRST - this must succeed
 app = Flask(__name__)
 print("[app] Flask app created")
-
-# Allow CORS for the configured frontends (comma-separated origins)
-allowed_origins = os.getenv(
-    "CORS_ORIGINS",
-    "http://localhost:3000,http://localhost:3001",
-)
-CORS(app, resources={r"/*": {"origins": [o.strip() for o in allowed_origins.split(',')]}})
 
 # Set basic config
 app.config['EXTERNAL_API_KEY'] = os.getenv('ODDS_API_KEY')
@@ -76,7 +68,6 @@ except Exception as e:
 @app.route('/', methods=['GET'])
 def home():
     """Returns a simple greeting message from the API."""
-    print("[route] GET / hit")
     return jsonify({
         "message": "Welcome to the Dockerized Flask Backend!",
         "status": "Running successfully",
@@ -86,5 +77,4 @@ def home():
 @app.route('/health', methods=['GET'])
 def health_check():
     """Endpoint for container health checks."""
-    print("[route] GET /health hit")
     return jsonify({"status": "ok"}), 200

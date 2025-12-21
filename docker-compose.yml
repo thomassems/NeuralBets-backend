@@ -18,6 +18,5 @@ services:
     restart: always
     environment:
       FLASK_ENV: production
-      PORT: 8080
     env_file:
       - ./.env

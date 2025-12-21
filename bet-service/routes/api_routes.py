@@ -13,7 +13,6 @@ api_bp = Blueprint('api_bp', __name__, url_prefix='/bets')
 @api_bp.route('/status', methods=['GET'])
 def api_status():
     """Returns the status of the sub-API service."""
-    print("[route] GET /bets/status hit")
     return jsonify({
         "status": "online",
         "version": "1.0",
@@ -23,27 +22,39 @@ def api_status():
 @api_bp.route('/', methods=['GET'])
 def list_bets():
     """Placeholder endpoint for managing bet resources."""
-    print("[route] GET /bets/ hit")
     # In a real application, this would query the database
     return jsonify([
         {"id": 1, "props": ["fight_1", "over_2.5"], "amount": 100, "odds": 1.5},
     ]), 200
 
 @api_bp.route('/getodds', methods=['GET'])
-def get_odds(sport, regions, markets):
-    """Placeholder call to external api to retrieve odds"""
-    print(f"[route] GET /bets/getodds hit sport={sport} regions={regions} markets={markets}")
-    # WILL ALSO NEED TO MAKE SURE THE SPORT IS VALID
+def get_odds():
+    """
+    Retrieve odds for a sport with optional region/market filters.
+    Query params:
+      - sport (required)
+      - regions (default: us)
+      - markets (default: h2h)
+    """
+    sport = request.args.get('sport')
+    regions = request.args.get('regions', 'us')
+    markets = request.args.get('markets', 'h2h')
+
     if not sport:
-        return jsonify({"error": "Sport cannot be null"}), 400
+        return jsonify({"error": "sport query param is required"}), 400
     if regions not in constants.VALID_REGIONS:
         return jsonify({"error": "Invalid region provided"}), 400
     if markets not in constants.VALID_MARKETS:
         return jsonify({"error": "Invalid markets provided"}), 400
+
     try:
         data = fetch_odds_data(sport, regions, markets)
-        return jsonify([data]), 200
-    except:
+        # fetch_odds_data may return a Flask response (e.g., missing API key)
+        if hasattr(data, "status_code"):
+            return data
+        return jsonify(data), 200
+    except Exception as e:
+        print(f"Error in get_odds: {e}")
         return jsonify({"error": "Failed to get odds data"}), 500
 
 @api_bp.route('/getdefaultodds', methods=['GET'])
@@ -53,7 +64,6 @@ def get_default_odds():
     Returns cached odds if available, otherwise fetches and stores new odds.
     Uses schema models for type safety and validation.
     """
-    print("[route] GET /bets/getdefaultodds hit")
     try:
         # Try to initialize repository (may fail if MongoDB not available)
         try:
@@ -115,21 +125,29 @@ def get_default_odds():
         return jsonify({"error": f"Failed to get odds data: {str(e)}"}), 500
 
 @api_bp.route('/getevents', methods=['GET'])
-def get_events(sport):
-    print(f"[route] GET /bets/getevents hit sport={sport}")
+def get_events():
+    """
+    Retrieve events for a sport.
+    Query params:
+      - sport (required)
+    """
+    sport = request.args.get('sport')
     print('getting events for sport: ', sport)
     if not sport:
-        return jsonify({"error": "Sport cannot be null"}), 400
+        data = fetch_events_data("mma_mixed_martial_arts")
+        return jsonify(data), 200
     try:
         data = fetch_events_data(sport)
-        return jsonify([data]), 200
-    except:
-        return jsonify({"error": "Failed to get odds data"}), 500
+        if hasattr(data, "status_code"):
+            return data
+        return jsonify(data), 200
+    except Exception as e:
+        print(f"Error in get_events: {e}")
+        return jsonify({"error": "Failed to get events data"}), 500
 
 @api_bp.route('/getdefaultevents', methods=['GET'])
 def get_default_events():
     """Gets default events for mma"""
-    print("[route] GET /bets/getdefaultevents hit")
     print('getting default events')
     try:
         data = fetch_events_data("mma_mixed_martial_arts")
