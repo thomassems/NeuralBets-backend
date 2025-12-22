@@ -10,11 +10,19 @@ except Exception as e:
     print(f"[app] Warning: Could not load .env file: {e}")
 
 from flask import Flask, jsonify
+from flask_cors import CORS
 import os
 
 # Create Flask app FIRST - this must succeed
 app = Flask(__name__)
 print("[app] Flask app created")
+
+# Configure CORS before registering blueprints
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3001,https://neuralbets.vercel.app")
+# Allow comma-separated list like "http://localhost:3000,https://example.com"
+allowed_origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+CORS(app, resources={r"/bets/*": {"origins": allowed_origins}, r"/health": {"origins": allowed_origins}, r"/": {"origins": allowed_origins}})
+print(f"[app] CORS enabled for origins: {allowed_origins}")
 
 # Set basic config
 app.config['EXTERNAL_API_KEY'] = os.getenv('ODDS_API_KEY')

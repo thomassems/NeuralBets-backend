@@ -134,8 +134,7 @@ def get_events():
     sport = request.args.get('sport')
     print('getting events for sport: ', sport)
     if not sport:
-        data = fetch_events_data("mma_mixed_martial_arts")
-        return jsonify(data), 200
+        return jsonify({"error": "Missing required query parameter: sport"}), 400
     try:
         data = fetch_events_data(sport)
         if hasattr(data, "status_code"):
