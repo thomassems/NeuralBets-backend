@@ -99,6 +99,23 @@ def simplify_odds_event(event: Dict[str, Any], bookmaker_index: int = 0, market_
         home_price = outcomes[0].get('price')
         away_price = outcomes[1].get('price')
     
+# return SimplifiedOdds(
+#         event_id=event.get('id', ''),
+#         sport_key=event.get('sport_key', ''),
+#         sport_name=event.get('sport_name', ''),
+#         sport_title=event.get('sport_title', ''),
+#         start_time=event.get('commence_time', ''),
+#         home_team=event.get('home_team', ''),
+#         away_team=event.get('away_team', ''),
+#         market=market.get('key', ''),
+#         bookmaker=bookmaker.get('key', ''),
+#         home_team_id=event.get('home_team_id', ''),
+#         away_team_id=event.get('away_team_id', ''),
+#         home_team_price=home_price or 0.0,
+#         away_team_price=away_price or 0.0,
+#         last_update=market.get('last_update', '')
+#     )
+
     return SimplifiedOdds(
         event_id=event.get('id', ''),
         sport_key=event.get('sport_key', ''),

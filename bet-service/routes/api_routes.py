@@ -4,11 +4,9 @@ from external_api_client import fetch_odds_data, fetch_events_data
 import shared_utils
 from shared_utils import constants
 from respository import BetRepository
-from schemas import SimplifiedOdds, validate_simplified_odds, prepare_for_json
+from schemas import SimplifiedOdds, validate_simplified_odds, prepare_for_json, simplify_odds_event, simplified_odds_to_dict
 
 api_bp = Blueprint('api_bp', __name__, url_prefix='/bets')
-
-# class ItemRequest(BaseModel):    
 
 @api_bp.route('/status', methods=['GET'])
 def api_status():
@@ -22,7 +20,6 @@ def api_status():
 @api_bp.route('/', methods=['GET'])
 def list_bets():
     """Placeholder endpoint for managing bet resources."""
-    # In a real application, this would query the database
     return jsonify([
         {"id": 1, "props": ["fight_1", "over_2.5"], "amount": 100, "odds": 1.5},
     ]), 200
@@ -49,7 +46,6 @@ def get_odds():
 
     try:
         data = fetch_odds_data(sport, regions, markets)
-        # fetch_odds_data may return a Flask response (e.g., missing API key)
         if hasattr(data, "status_code"):
             return data
         return jsonify(data), 200
@@ -57,8 +53,8 @@ def get_odds():
         print(f"Error in get_odds: {e}")
         return jsonify({"error": "Failed to get odds data"}), 500
 
-@api_bp.route('/getdefaultodds', methods=['GET'])
-def get_default_odds():
+@api_bp.route('/getliveodds', methods=['GET'])
+def get_live_odds():
     """
     Get default live odds.
     Returns cached odds if available, otherwise fetches and stores new odds.
@@ -105,7 +101,6 @@ def get_default_odds():
         
         # If database not available or storage failed, return data directly from API
         # Transform using schemas for consistency
-        from schemas import simplify_odds_event, simplified_odds_to_dict, prepare_for_json
         simplified_data = []
         for event in data:
             try:
@@ -119,10 +114,10 @@ def get_default_odds():
         return jsonify(simplified_data), 200
         
     except Exception as e:
-        print(f"Error in get_default_odds: {e}")
+        print(f"Error in get_live_odds: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({"error": f"Failed to get odds data: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to get live odds data: {str(e)}"}), 500
 
 @api_bp.route('/getevents', methods=['GET'])
 def get_events():
@@ -153,3 +148,109 @@ def get_default_events():
         return jsonify([data]), 200
     except:
         return jsonify({"error": "Failed to get default events"}), 500
+
+@api_bp.route('/getdefaultodds', methods=['GET'])
+def get_default_odds():
+    """
+    Get default live odds in a format optimized for frontend consumption.
+    This endpoint wraps get_live_odds and transforms the data to match frontend requirements.
+    Returns all live odds with proper field mapping for the frontend.
+    """
+    try:
+        # Try to initialize repository (may fail if MongoDB not available)
+        try:
+            repo = BetRepository()
+            db_available = True
+        except RuntimeError as e:
+            print(f"MongoDB not available: {e}")
+            db_available = False
+            repo = None
+        
+        # If database is available, try to get cached odds
+        if db_available and repo:
+            try:
+                res = repo.get_live_odds(simplified=True)
+                if res:
+                    print('returning cached odds (transformed for frontend)')
+                    transformed_data = transform_odds_for_frontend(res)
+                    return jsonify(transformed_data), 200
+            except Exception as e:
+                print(f"Error getting cached odds: {e}")
+        
+        # If no cached odds or DB unavailable, fetch new ones from API
+        print('fetching new live odds from external API for default odds')
+        data = fetch_odds_data(sport='upcoming')
+        
+        if not data:
+            return jsonify({"error": "No odds data available from external API"}), 500
+        
+        # Try to store in database if available
+        if db_available and repo:
+            try:
+                stored_count = repo.update_live_odds(data)
+                print(f"Stored {stored_count} simplified odds")
+                # Return from database after storing
+                res = repo.get_live_odds(simplified=True)
+                if res:
+                    transformed_data = transform_odds_for_frontend(res)
+                    return jsonify(transformed_data), 200
+            except Exception as e:
+                print(f"Error storing odds: {e}")
+        
+        # If database not available or storage failed, return data directly from API
+        # Transform using schemas for consistency
+        simplified_data = []
+        for event in data:
+            try:
+                simplified = simplify_odds_event(event)
+                simplified_dict = simplified_odds_to_dict(simplified)
+                simplified_data.append(prepare_for_json(simplified_dict))
+            except Exception as e:
+                print(f"Error transforming odds event: {e}")
+                continue
+        
+        transformed_data = transform_odds_for_frontend(simplified_data)
+        return jsonify(transformed_data), 200
+        
+    except Exception as e:
+        print(f"Error in get_default_odds: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to get default odds data: {str(e)}"}), 500
+
+def transform_odds_for_frontend(odds_data):
+    """
+    Transform backend odds data to match frontend live_game interface.
+    Maps field names and adds necessary IDs for the frontend.
+    """
+    import uuid
+    transformed = []
+    
+    for odds in odds_data:
+        # Handle both dictionary and object formats
+        if hasattr(odds, '__dict__'):
+            odds_dict = odds.__dict__
+        else:
+            odds_dict = odds
+        
+        # Generate unique IDs for home and away teams
+        home_team_id = str(uuid.uuid4())
+        away_team_id = str(uuid.uuid4())
+        
+        transformed_game = {
+            'id': odds_dict.get('event_id', ''),
+            'sport_name': odds_dict.get('sport_key', '').replace('_', ' ').title(),
+            'sport_title': odds_dict.get('sport_title', ''),
+            'home_team': odds_dict.get('home_team', ''),
+            'home_team_id': home_team_id,
+            'away_team': odds_dict.get('away_team', ''),
+            'away_team_id': away_team_id,
+            'market': odds_dict.get('market_type', 'h2h'),
+            'bookmaker': odds_dict.get('bookmaker', ''),
+            'home_team_price': odds_dict.get('home_team_price', 0.0),
+            'away_team_price': odds_dict.get('away_team_price', 0.0),
+            'start_time': odds_dict.get('commence_time', '')
+        }
+        transformed.append(transformed_game)
+    
+    return transformed
