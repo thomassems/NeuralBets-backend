@@ -1,4 +1,18 @@
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: always
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   user-service:
     build:
       context: .
@@ -18,5 +32,13 @@ services:
     restart: always
     environment:
       FLASK_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     env_file:
       - ./.env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis-data:
