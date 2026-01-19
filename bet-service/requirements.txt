@@ -6,4 +6,5 @@ requests==2.28.1
 pymongo[srv]
 certifi==2024.7.4
 redis==5.0.1
+upstash-redis
 -e ./shared_utils

@@ -155,96 +155,116 @@ def get_default_odds():
     """
     Get default live odds with Redis caching for fast responses.
     
-    Caching strategy:
+    Optimized caching strategy:
     1. Check Redis cache first (1-minute TTL)
-    2. If cache valid (< 1 minute old), return cached data immediately
-    3. If cache expired or missing, fetch from external API
-    4. Store in Redis and optionally in MongoDB
-    5. Return fresh data
+    2. If cache hit, return immediately (~50-100ms)
+    3. If cache miss, fetch from external API and transform once
+    4. Cache in Redis and return
     
-    This dramatically improves response time from ~3s to ~100ms for cached requests.
+    MongoDB storage removed for better performance.
     """
     try:
-        # Step 1: Check Redis cache
+        # Check Redis cache first
         cached_result = redis_cache.get_cached_odds()
         if cached_result:
-            print('[getdefaultodds] Returning data from Redis cache')
+            print('[getdefaultodds] Cache hit - returning from Redis')
             return jsonify(cached_result['data']), 200
         
-        print('[getdefaultodds] Cache miss or expired, fetching fresh data')
+        print('[getdefaultodds] Cache miss - fetching fresh data')
         
-        # Step 2: Fetch fresh data from external API
+        # Fetch fresh data from external API
         data = fetch_odds_data(sport='upcoming')
-        
         if not data:
-            return jsonify({"error": "No odds data available from external API"}), 500
+            return jsonify({"error": "No odds data available"}), 500
         
-        # Step 3: Transform data for frontend
-        simplified_data = []
-        for event in data:
-            try:
-                simplified = simplify_odds_event(event)
-                simplified_dict = simplified_odds_to_dict(simplified)
-                simplified_data.append(prepare_for_json(simplified_dict))
-            except Exception as e:
-                print(f"Error transforming odds event: {e}")
-                continue
+        # Transform data once (optimized single-pass transformation)
+        transformed_data = transform_odds_for_frontend_optimized(data)
         
-        transformed_data = transform_odds_for_frontend(simplified_data)
-        
-        # Step 4: Cache in Redis (primary cache - fast)
+        # Cache in Redis
         redis_cache.set_cached_odds(transformed_data)
+        print(f'[getdefaultodds] Cached {len(transformed_data)} events')
         
-        # Step 5: Optionally store in MongoDB (secondary/backup storage)
-        try:
-            repo = BetRepository()
-            stored_count = repo.update_live_odds(data)
-            print(f"[getdefaultodds] Stored {stored_count} odds in MongoDB")
-        except Exception as e:
-            print(f"[getdefaultodds] MongoDB storage failed (non-critical): {e}")
-        
-        # Step 6: Return fresh data
         return jsonify(transformed_data), 200
         
     except Exception as e:
         print(f"Error in get_default_odds: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({"error": f"Failed to get default odds data: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to get odds data: {str(e)}"}), 500
 
-def transform_odds_for_frontend(odds_data):
+def transform_odds_for_frontend_optimized(raw_events):
     """
-    Transform backend odds data to match frontend live_game interface.
-    Maps field names and adds necessary IDs for the frontend.
+    Optimized single-pass transformation from external API to frontend format.
+    Combines all transformation steps to minimize processing time.
     """
     import uuid
     transformed = []
     
-    for odds in odds_data:
-        # Handle both dictionary and object formats
-        if hasattr(odds, '__dict__'):
-            odds_dict = odds.__dict__
-        else:
-            odds_dict = odds
-        
-        # Generate unique IDs for home and away teams
-        home_team_id = str(uuid.uuid4())
-        away_team_id = str(uuid.uuid4())
-        
-        transformed_game = {
-            'id': odds_dict.get('event_id', ''),
-            'sport_name': odds_dict.get('sport_key', '').replace('_', ' ').title(),
-            'sport_title': odds_dict.get('sport_title', ''),
-            'home_team': odds_dict.get('home_team', ''),
-            'home_team_id': home_team_id,
-            'away_team': odds_dict.get('away_team', ''),
-            'away_team_id': away_team_id,
-            'market': odds_dict.get('market_type', 'h2h'),
-            'bookmaker': odds_dict.get('bookmaker', ''),
-            'home_team_price': odds_dict.get('home_team_price', 0.0),
-            'away_team_price': odds_dict.get('away_team_price', 0.0),
-            'start_time': odds_dict.get('commence_time', '')
-        }
-        transformed.append(transformed_game)
+    for event in raw_events:
+        try:
+            # Extract event data
+            event_id = event.get('id', '')
+            sport_key = event.get('sport_key', '')
+            sport_title = event.get('sport_title', '')
+            home_team = event.get('home_team', '')
+            away_team = event.get('away_team', '')
+            commence_time = event.get('commence_time', '')
+            
+            # Get first bookmaker's odds
+            bookmakers = event.get('bookmakers', [])
+            if not bookmakers:
+                continue
+            
+            bookmaker = bookmakers[0]
+            bookmaker_name = bookmaker.get('title', '')
+            markets = bookmaker.get('markets', [])
+            
+            if not markets:
+                continue
+            
+            # Get h2h market (head-to-head odds)
+            h2h_market = next((m for m in markets if m.get('key') == 'h2h'), None)
+            if not h2h_market:
+                continue
+            
+            outcomes = h2h_market.get('outcomes', [])
+            if len(outcomes) < 2:
+                continue
+            
+            # Extract prices
+            home_price = 0.0
+            away_price = 0.0
+            
+            for outcome in outcomes:
+                if outcome.get('name') == home_team:
+                    home_price = outcome.get('price', 0.0)
+                elif outcome.get('name') == away_team:
+                    away_price = outcome.get('price', 0.0)
+            
+            # Generate IDs (using event_id + team name for consistency)
+            home_team_id = f"{event_id}-home"
+            away_team_id = f"{event_id}-away"
+            
+            # Build frontend game object
+            transformed_game = {
+                'id': event_id,
+                'sport_name': sport_key.replace('_', ' ').title(),
+                'sport_title': sport_title,
+                'home_team': home_team,
+                'home_team_id': home_team_id,
+                'away_team': away_team,
+                'away_team_id': away_team_id,
+                'market': 'h2h',
+                'bookmaker': bookmaker_name,
+                'home_team_price': home_price,
+                'away_team_price': away_price,
+                'start_time': commence_time
+            }
+            
+            transformed.append(transformed_game)
+            
+        except Exception as e:
+            print(f"Error transforming event: {e}")
+            continue
     
     return transformed

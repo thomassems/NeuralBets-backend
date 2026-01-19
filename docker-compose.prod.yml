@@ -1,0 +1,24 @@
+# Production Docker Compose (uses Upstash Redis, no local Redis container)
+services:
+  user-service:
+    build:
+      context: .
+      dockerfile: ./user-service/Dockerfile
+    ports:
+      - "8081:5000"
+    restart: always
+    environment:
+      FLASK_ENV: production
+
+  bet-service:
+    build:
+      context: .
+      dockerfile: ./bet-service/Dockerfile
+    ports:
+      - "8082:8080"
+    restart: always
+    environment:
+      FLASK_ENV: production
+    env_file:
+      - ./.env
+    # Note: No Redis dependency - using Upstash via REDIS_URL in .env
